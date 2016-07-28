@@ -1,0 +1,60 @@
+hhi <- read.csv('HHINY.csv')
+hhiUS <- read.csv('hhiUS.csv')
+#Data Transformation - percentage change of HPI over the past 12 months
+hpi.yrdiff = matrix(0, 210,20)
+for (i in 1:20) {
+hpi.yrdiff[, i] = diff(hpi[, i+3], 12)/hpi[1:210,i+3]
+}
+hpi.yrdiff = data.frame(hpi.yrdiff)
+names(hpi.yrdiff) = names(hpi)[4:23]
+############ Largest Run-up and Hardest Crash ##############
+#Find the largest run-up
+x = which(hpi.yrdiff==max(hpi.yrdiff), arr.ind=T)[,2]
+names(hpi.yrdiff)[x]
+#Find the hardest crash
+x = which(hpi.yrdiff==min(hpi.yrdiff), arr.ind=T)[,2]
+names(hpi.yrdiff)[x]
+################# Household Income ##################
+#Data Transformation - percentage change HHI NY
+hhi.diff = diff(hhi[,2])/hhi[1:18,2]
+#Data Transformation - percentage change HHI US
+hhiUS.diff = diff(hhiUS[,2])/hhiUS[1:18,2]
+par(mfrow = c(1,1))
+#plotting the curve
+matplot(hpi.yrdiff[,1:8], type='l', pch = 1, col = 1:8, xaxt = 'n', xlim = c(0, 220), xlab = 'Home Price Index Change over past 12 month')
+legend('topleft', legend = names(hpi.yrdiff)[1:8], col = 1:8, pch=1)
+axis(1, at = c(1,61,121,181), lab=c('Jan 92', 'Jan 97', 'Jan 02', 'Jan 07'))
+matplot(hpi.yrdiff[,9:16], type='l', pch = 1, col = 1:8, xaxt = 'n', xlim = c(0, 220), xlab = 'Home Price Index Change over past 12 month')
+legend('topleft', legend = names(hpi.yrdiff)[9:16], col = 1:8, pch=1)
+axis(1, at = c(1,61,121,181), lab=c('Jan 92', 'Jan 97', 'Jan 02', 'Jan 07'))
+matplot(hpi.yrdiff[,17:20], type='l', pch = 1, col = 1:4, xaxt = 'n', xlim = c(0, 220), xlab = 'Home Price Index Change over past 12 month')
+legend('topleft', legend = names(hpi.yrdiff)[17:20], col = 1:4, pch=1)
+axis(1, at = c(1,61,121,181), lab=c('Jan 92', 'Jan 97', 'Jan 02', 'Jan 07'))
+#plot of HPI New York v.s. HHI New York
+plot(hpi.yrdiff[,16], main = 'HPI v.s. HHi New York Metro', xaxt='n', type='l', pch = 20, col = 'blue', ylab = '')
+axis(1, at = c(1,61,121,181), lab=c('Jan 92', 'Jan 97', 'Jan 02', 'Jan 07'))
+par(new=TRUE)
+plot(hhi.diff, xaxt = 'n', yaxt='n', col = 'red', type = 'l', pch=20, xlabl = 'Change in past 12 months')
+legend('topleft', legend = c('HPI','HHI'), lty=c(1,1), col = c('blue','red'))
+#plot of HPI 10city v.s. HHI US
+plot(hpi.yrdiff[,20], main = 'HPI v.s. HHi National', xaxt='n', type='l', pch = 20, col = 'blue', ylab = '')
+axis(1, at = c(1,61,121,181), lab=c('Jan 92', 'Jan 97', 'Jan 02', 'Jan 07'))
+par(new=TRUE)
+plot(hhiUS.diff, xaxt = 'n', yaxt='n', col = 'red', type = 'l', pch=20, xlabl = 'Change in past 12 months')
+legend('topleft', legend = c('HPI','HHI'), lty=c(1,1), col = c('blue','red'))
+#model construction using ARIMA, use New York Metro Area as an example
+autofitNY = auto.arima(hpi[,19], max.p=5, max.q=5,
+max.P=2, max.Q=2, max.order=5, max.d=2, max.D=1,
+start.p=2, start.q=2, start.P=1, start.Q=1,
+stationary=FALSE, seasonal=TRUE,
+ic=c("aicc", "aic", "bic"), stepwise=TRUE, trace=FALSE,
+approximation=(length(x)>100 | frequency(x)>12), xreg=NULL,
+test=c("kpss","adf","pp"), seasonal.test=c("ocsb","ch"),
+allowdrift=TRUE, allowmean=TRUE, lambda=NULL, biasadj=FALSE,
+parallel=FALSE, num.cores=2)
+#predict the next 18 months for HPI of New York Metro
+hpi.pred <- predict(autofitNY, n.ahead = 12)
+#plotting the prediction for New York Metro
+plot(hpi[,19], type='l', xlim=c(0, 250), main = 'Home Pirce Index New York Metro Forecast', xaxt='n', ylab = 'Home Price Index (NY)')
+lines(hpi.pred$pred, col='red', pch=10)
+axis(1, at = c(1,61,121,181,241), lab=c('Jan 92', 'Jan 97', 'Jan 02', 'Jan 07', 'jan12'))
